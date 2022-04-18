@@ -27,6 +27,7 @@ namespace SupermarketSim {
 			("Set the expected number of customers", SetExpectedNumCustomers),
 			("Set the number of checkout lanes", SetNumCheckoutLanes),
 			("Set the number of milliseconds per simulation step", SetRefreshDelay),
+			("Toggle Output Limiting", ToggleOutputLimit),
 			("Exit", Exit)
 		};
 
@@ -39,7 +40,8 @@ namespace SupermarketSim {
 			new TimeSpan(0, 0, 6, 15), //6 minutes, 15 seconds
 			600,
 			4,
-			30
+			30,
+			false
 		);
 
 		private static MenuCommandResult? lastCommandResult = null;
@@ -98,11 +100,11 @@ namespace SupermarketSim {
 		/// <returns></returns>
 		private static MenuCommandResult RunSimulation() {
 
-			Console.Clear();
 			supermarket.DoSimulation();
 
 			Console.WriteLine("Simulation Complete! Press enter to return to main menu");
 			Console.ReadLine();
+			Console.Clear();
 			return MenuCommandResult.SUCCESS;
 		}
 
@@ -218,6 +220,17 @@ namespace SupermarketSim {
 				Console.WriteLine("Failed to parse an integer from the input. Please try again");
 				return MenuCommandResult.FAILURE;
 			}
+		}
+
+		/// <summary>
+		/// toggles the output from the simulation
+		/// </summary>
+		/// <returns></returns>
+
+		public static MenuCommandResult ToggleOutputLimit() {
+
+			supermarket.LimitOutput = !supermarket.LimitOutput;
+			return MenuCommandResult.SUCCESS;
 		}
 
 		/// <summary>

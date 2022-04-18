@@ -15,6 +15,8 @@ namespace SupermarketSim {
 
 		public int RefreshDelay { get; set; }
 
+		public bool LimitOutput { get; set; }
+
 		private PriorityQueue<Event, TimeOnly> eventQueue;
 		private List<Queue<Customer>> checkoutLanes;
 		
@@ -34,7 +36,7 @@ namespace SupermarketSim {
 		/// <param name="expectedNumCustomers"></param>
 		/// <param name="numCheckoutLanes"></param>
 		public Supermarket (TimeOnly openingTime, TimeOnly closingTime, TimeSpan expectedCheckoutTime,
-			int expectedNumCustomers, int numCheckoutLanes, int refreshDelay) {
+			int expectedNumCustomers, int numCheckoutLanes, int refreshDelay, bool limitOutput) {
 
 			OpeningTime = openingTime;
 			ClosingTime = closingTime;
@@ -42,6 +44,7 @@ namespace SupermarketSim {
 			ExpectedNumCustomers = expectedNumCustomers;
 			NumCheckoutLanes = numCheckoutLanes;
 			RefreshDelay = refreshDelay;
+			LimitOutput = limitOutput;
 
 			eventQueue = new PriorityQueue<Event, TimeOnly>(numCustomers * 2);
 			checkoutLanes = new List<Queue<Customer>>(numCheckoutLanes);
@@ -129,7 +132,7 @@ namespace SupermarketSim {
 				//these do happen in chronological order, but with a wildly varying timestep
 
 				//because arrival events are our only measurement of time, we must queue exit events while
-				//handling arrival events. 
+				//handling arrival events 
 
 				var evt = eventQueue.Dequeue();
 				numEventsProcessed++;
@@ -148,7 +151,10 @@ namespace SupermarketSim {
 				else if (evt is ExitEvent)
 					ProcessExit(evt);
 
-				DrawAndWait();
+				if (!LimitOutput) {
+					Draw();
+					Wait();
+				}
 			}
 
 			//sanity checks
@@ -156,11 +162,15 @@ namespace SupermarketSim {
 			Debug.Assert(numArrivalEventsProcessed == numExitEventsProcessed);
 			Debug.Assert(numEventsProcessed == numArrivalEventsProcessed + numExitEventsProcessed);
 
-			int totalCustomersInLine = 0;
+			int totalCustomersWaiting = 0;
 			foreach (var lane in checkoutLanes)
-				totalCustomersInLine += lane.Count;
+				totalCustomersWaiting += lane.Count;
 
-			Debug.Assert(numArrivalEventsProcessed - numExitEventsProcessed == totalCustomersInLine);
+			Debug.Assert(numArrivalEventsProcessed - numExitEventsProcessed == totalCustomersWaiting);
+
+			//give just a single report when output is limited
+			if(LimitOutput)
+				Draw();
 		}
 
 		/// <summary>
@@ -182,10 +192,9 @@ namespace SupermarketSim {
 		}
 
 		/// <summary>
-		/// writes the current supermarket state to the console and waits
+		/// writes the current supermarket state to the console
 		/// </summary>
-		/// <param name="milliseconds"></param>
-		public void DrawAndWait() {
+		public void Draw() {
 
 			Console.Clear();
 			Console.WriteLine("Running Simulation...");
@@ -207,6 +216,12 @@ namespace SupermarketSim {
 			Console.WriteLine($"Number of exits processed: {numExitEventsProcessed}");
 			Console.WriteLine($"Longest line encountered so far: {longestLineLength}");
 			Console.WriteLine();
+		}
+
+		/// <summary>
+		/// waits the `RefreshDelay` ms
+		/// </summary>
+		public void Wait() {
 
 			Thread.Sleep(RefreshDelay);
 		}
@@ -220,7 +235,11 @@ namespace SupermarketSim {
 			result.Append($"Expected Checkout Time: {ExpectedCheckoutTime}\n");
 			result.Append($"Expected Number of Customers: {ExpectedNumCustomers}\n");
 			result.Append($"Number of Checkout Lanes: {NumCheckoutLanes}\n");
-			result.Append($"Number of Milliseconds per Simulation Step: {RefreshDelay}");
+			result.Append($"Number of Milliseconds per Simulation Step: {RefreshDelay}\n");
+			result.Append($"Simulation Output ");
+
+			result.Append(LimitOutput ? "Limited" : "Unlimited");
+			result.Append("\n");
 
 			return result.ToString();
 		}
